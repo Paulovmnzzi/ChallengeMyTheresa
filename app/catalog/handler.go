@@ -17,17 +17,15 @@ type Product struct {
 }
 
 type CatalogHandler struct {
-	repo *models.ProductsRepository
+	repo models.ProductRepository
 }
 
-func NewCatalogHandler(r *models.ProductsRepository) *CatalogHandler {
-	return &CatalogHandler{
-		repo: r,
-	}
+func NewCatalogHandler(r models.ProductRepository) *CatalogHandler {
+	return &CatalogHandler{repo: r}
 }
 
 func (h *CatalogHandler) HandleGet(w http.ResponseWriter, r *http.Request) {
-	res, err := h.repo.GetAllProducts()
+	res, _, err := h.repo.GetProducts(models.ProductFilter{Offset: 0, Limit: 10})
 	if err != nil {
 		api.ErrorResponse(w, http.StatusInternalServerError, "internal server error")
 		return
