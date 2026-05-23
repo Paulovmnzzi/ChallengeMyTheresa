@@ -15,8 +15,8 @@ type CategoryRepository interface {
 }
 
 type ProductFilter struct {
-	Category      string
-	PriceLessThan *float64
-	Offset        int
-	Limit         int
+	Category string
+	MaxPrice *float64
+	Offset   int
+	Limit    int
 }

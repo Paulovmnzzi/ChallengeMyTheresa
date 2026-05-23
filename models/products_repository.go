@@ -16,12 +16,23 @@ func (r *ProductsRepository) GetProducts(filter ProductFilter) ([]Product, int64
 	var products []Product
 	var total int64
 
-	if err := r.db.Model(&Product{}).Count(&total).Error; err != nil {
+	q := r.db.Model(&Product{})
+
+	if filter.Category != "" {
+		q = q.Where("category_id = (SELECT id FROM categories WHERE code = ?)", filter.Category)
+	}
+	if filter.MaxPrice != nil {
+		q = q.Where("products.price < ?", *filter.MaxPrice)
+	}
+
+	if err := q.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
-	if err := r.db.Preload("Variants").Find(&products).Error; err != nil {
+
+	if err := q.Preload("Category").Offset(filter.Offset).Limit(filter.Limit).Find(&products).Error; err != nil {
 		return nil, 0, err
 	}
+
 	return products, total, nil
 }
 
