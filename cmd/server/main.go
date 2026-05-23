@@ -30,10 +30,10 @@ func main() {
 
 	// Initialize database connection
 	db, close := database.New(
-		os.Getenv("POSTGRES_USER"),
-		os.Getenv("POSTGRES_PASSWORD"),
-		os.Getenv("POSTGRES_DB"),
-		os.Getenv("POSTGRES_PORT"),
+		requireEnv("POSTGRES_USER"),
+		requireEnv("POSTGRES_PASSWORD"),
+		requireEnv("POSTGRES_DB"),
+		requireEnv("POSTGRES_PORT"),
 	)
 	defer close()
 
@@ -54,7 +54,7 @@ func main() {
 
 	// Set up the HTTP server
 	srv := &http.Server{
-		Addr:    fmt.Sprintf("localhost:%s", os.Getenv("HTTP_PORT")),
+		Addr:    fmt.Sprintf("localhost:%s", requireEnv("HTTP_PORT")),
 		Handler: mux,
 	}
 
@@ -74,4 +74,12 @@ func main() {
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	srv.Shutdown(shutdownCtx)
+}
+
+func requireEnv(key string) string {
+	v := os.Getenv(key)
+	if v == "" {
+		log.Fatalf("required environment variable %s is not set", key)
+	}
+	return v
 }
