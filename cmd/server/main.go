@@ -20,22 +20,20 @@ import (
 
 func main() {
 	// Load environment variables from .env file
-	if err := godotenv.Load(".env"); err != nil {
-		log.Fatalf("Error loading .env file: %s", err)
-	}
+	_ = godotenv.Load(".env")
 
 	// signal handling for graceful shutdown
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
 	// Initialize database connection
-	db, close := database.New(
+	db, closeDB := database.New(
 		requireEnv("POSTGRES_USER"),
 		requireEnv("POSTGRES_PASSWORD"),
 		requireEnv("POSTGRES_DB"),
 		requireEnv("POSTGRES_PORT"),
 	)
-	defer close()
+	defer closeDB()
 
 	// Initialize handlers
 	prodRepo := models.NewProductsRepository(db)
@@ -73,7 +71,9 @@ func main() {
 	log.Println("Shutting down server...")
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	srv.Shutdown(shutdownCtx)
+	if err := srv.Shutdown(shutdownCtx); err != nil {
+		log.Printf("Server shutdown error: %s", err)
+	}
 }
 
 func requireEnv(key string) string {
