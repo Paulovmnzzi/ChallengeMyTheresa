@@ -31,7 +31,7 @@ func (r *ProductsRepository) GetProducts(filter ProductFilter) ([]Product, int64
 		return nil, 0, err
 	}
 
-	if err := q.Preload("Category").Offset(filter.Offset).Limit(filter.Limit).Find(&products).Error; err != nil {
+	if err := q.Preload("Category").Order("products.id").Offset(filter.Offset).Limit(filter.Limit).Find(&products).Error; err != nil {
 		return nil, 0, err
 	}
 

@@ -17,7 +17,7 @@ func NewCategoriesRepository(db *gorm.DB) *CategoriesRepository {
 
 func (r *CategoriesRepository) GetAllCategories() ([]Category, error) {
 	var categories []Category
-	if err := r.db.Find(&categories).Error; err != nil {
+	if err := r.db.Order("id").Find(&categories).Error; err != nil {
 		return nil, err
 	}
 	return categories, nil
