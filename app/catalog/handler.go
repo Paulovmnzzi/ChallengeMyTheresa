@@ -66,6 +66,56 @@ func (h *CatalogHandler) HandleGet(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+type variantResponse struct {
+	Name  string  `json:"name"`
+	SKU   string  `json:"sku"`
+	Price float64 `json:"price"`
+}
+
+type productDetailResponse struct {
+	Code     string           `json:"code"`
+	Price    float64          `json:"price"`
+	Category categoryResponse `json:"category"`
+	Variants []variantResponse `json:"variants"`
+}
+
+func (h *CatalogHandler) HandleGetByCode(w http.ResponseWriter, r *http.Request) {
+	code := r.PathValue("code")
+
+	p, err := h.repo.GetProductByCode(code)
+	if err != nil {
+		api.ErrorResponse(w, http.StatusInternalServerError, "internal server error")
+		return
+	}
+	if p == nil {
+		api.ErrorResponse(w, http.StatusNotFound, "product not found")
+		return
+	}
+
+	variants := make([]variantResponse, len(p.Variants))
+	for i, v := range p.Variants {
+		price := v.Price
+		if price.IsZero() {
+			price = p.Price
+		}
+		variants[i] = variantResponse{
+			Name:  v.Name,
+			SKU:   v.SKU,
+			Price: price.InexactFloat64(),
+		}
+	}
+
+	api.OKResponse(w, productDetailResponse{
+		Code:  p.Code,
+		Price: p.Price.InexactFloat64(),
+		Category: categoryResponse{
+			Code: p.Category.Code,
+			Name: p.Category.Name,
+		},
+		Variants: variants,
+	})
+}
+
 func parseFilter(w http.ResponseWriter, r *http.Request) (models.ProductFilter, bool) {
 	q := r.URL.Query()
 	filter := models.ProductFilter{

@@ -15,6 +15,8 @@ type mockProductRepository struct {
 	total          int64
 	err            error
 	capturedFilter models.ProductFilter
+	product        *models.Product
+	productErr     error
 }
 
 func (m *mockProductRepository) GetProducts(filter models.ProductFilter) ([]models.Product, int64, error) {
@@ -23,7 +25,7 @@ func (m *mockProductRepository) GetProducts(filter models.ProductFilter) ([]mode
 }
 
 func (m *mockProductRepository) GetProductByCode(code string) (*models.Product, error) {
-	return nil, nil
+	return m.product, m.productErr
 }
 
 func TestHandleGet(t *testing.T) {
@@ -120,5 +122,99 @@ func TestHandleGet(t *testing.T) {
 		assert.Equal(t, http.StatusOK, rec.Code)
 		assert.NotNil(t, mock.capturedFilter.MaxPrice)
 		assert.Equal(t, 50.0, *mock.capturedFilter.MaxPrice)
+	})
+}
+
+func TestHandleGetByCode(t *testing.T) {
+	newMux := func(handler *CatalogHandler) *http.ServeMux {
+		mux := http.NewServeMux()
+		mux.HandleFunc("GET /catalog/{code}", handler.HandleGetByCode)
+		return mux
+	}
+
+	t.Run("returns 200 with product, category and variants", func(t *testing.T) {
+		mock := &mockProductRepository{
+			product: &models.Product{
+				Code:     "PROD001",
+				Price:    decimal.NewFromFloat(10.99),
+				Category: models.Category{Code: "clothing", Name: "Clothing"},
+				Variants: []models.Variant{
+					{Name: "Variant A", SKU: "SKU001A", Price: decimal.NewFromFloat(11.99)},
+					{Name: "Variant B", SKU: "SKU001B", Price: decimal.NewFromFloat(10.99)},
+				},
+			},
+		}
+		handler := NewCatalogHandler(mock)
+		req := httptest.NewRequest(http.MethodGet, "/catalog/PROD001", nil)
+		rec := httptest.NewRecorder()
+		newMux(handler).ServeHTTP(rec, req)
+		assert.Equal(t, http.StatusOK, rec.Code)
+		assert.Equal(t, "application/json", rec.Header().Get("Content-Type"))
+		assert.JSONEq(t,
+			`{"code":"PROD001","price":10.99,"category":{"code":"clothing","name":"Clothing"},"variants":[{"name":"Variant A","sku":"SKU001A","price":11.99},{"name":"Variant B","sku":"SKU001B","price":10.99}]}`,
+			rec.Body.String(),
+		)
+	})
+
+	t.Run("returns 404 when product not found", func(t *testing.T) {
+		mock := &mockProductRepository{product: nil}
+		handler := NewCatalogHandler(mock)
+		req := httptest.NewRequest(http.MethodGet, "/catalog/NOTEXIST", nil)
+		rec := httptest.NewRecorder()
+		newMux(handler).ServeHTTP(rec, req)
+		assert.Equal(t, http.StatusNotFound, rec.Code)
+		assert.JSONEq(t, `{"error":"product not found"}`, rec.Body.String())
+	})
+
+	t.Run("variant without price inherits product price", func(t *testing.T) {
+		mock := &mockProductRepository{
+			product: &models.Product{
+				Code:  "PROD001",
+				Price: decimal.NewFromFloat(10.99),
+				Variants: []models.Variant{
+					{Name: "V1", SKU: "SKU1", Price: decimal.NewFromFloat(0)},
+				},
+			},
+		}
+		handler := NewCatalogHandler(mock)
+		req := httptest.NewRequest(http.MethodGet, "/catalog/PROD001", nil)
+		rec := httptest.NewRecorder()
+		newMux(handler).ServeHTTP(rec, req)
+		assert.Equal(t, http.StatusOK, rec.Code)
+		assert.JSONEq(t,
+			`{"code":"PROD001","price":10.99,"category":{"code":"","name":""},"variants":[{"name":"V1","sku":"SKU1","price":10.99}]}`,
+			rec.Body.String(),
+		)
+	})
+
+	t.Run("variant with own price does not inherit product price", func(t *testing.T) {
+		mock := &mockProductRepository{
+			product: &models.Product{
+				Code:  "PROD001",
+				Price: decimal.NewFromFloat(10.99),
+				Variants: []models.Variant{
+					{Name: "V1", SKU: "SKU1", Price: decimal.NewFromFloat(25.00)},
+				},
+			},
+		}
+		handler := NewCatalogHandler(mock)
+		req := httptest.NewRequest(http.MethodGet, "/catalog/PROD001", nil)
+		rec := httptest.NewRecorder()
+		newMux(handler).ServeHTTP(rec, req)
+		assert.Equal(t, http.StatusOK, rec.Code)
+		assert.JSONEq(t,
+			`{"code":"PROD001","price":10.99,"category":{"code":"","name":""},"variants":[{"name":"V1","sku":"SKU1","price":25}]}`,
+			rec.Body.String(),
+		)
+	})
+
+	t.Run("returns 500 when repository fails", func(t *testing.T) {
+		mock := &mockProductRepository{productErr: assert.AnError}
+		handler := NewCatalogHandler(mock)
+		req := httptest.NewRequest(http.MethodGet, "/catalog/PROD001", nil)
+		rec := httptest.NewRecorder()
+		newMux(handler).ServeHTTP(rec, req)
+		assert.Equal(t, http.StatusInternalServerError, rec.Code)
+		assert.JSONEq(t, `{"error":"internal server error"}`, rec.Body.String())
 	})
 }

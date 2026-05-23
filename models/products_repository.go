@@ -1,6 +1,8 @@
 package models
 
 import (
+	"errors"
+
 	"gorm.io/gorm"
 )
 
@@ -37,5 +39,13 @@ func (r *ProductsRepository) GetProducts(filter ProductFilter) ([]Product, int64
 }
 
 func (r *ProductsRepository) GetProductByCode(code string) (*Product, error) {
-	return nil, nil
+	var product Product
+	result := r.db.Preload("Category").Preload("Variants").Where("code = ?", code).First(&product)
+	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+		return nil, nil
+	}
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	return &product, nil
 }
