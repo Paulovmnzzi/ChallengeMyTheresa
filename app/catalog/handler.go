@@ -13,14 +13,14 @@ type categoryResponse struct {
 	Name string `json:"name"`
 }
 
-type Product struct {
+type product struct {
 	Code     string           `json:"code"`
 	Price    float64          `json:"price"`
 	Category categoryResponse `json:"category"`
 }
 
 type Response struct {
-	Products []Product `json:"products"`
+	Products []product `json:"products"`
 	Total    int64     `json:"total"`
 	Offset   int       `json:"offset"`
 	Limit    int       `json:"limit"`
@@ -46,9 +46,9 @@ func (h *CatalogHandler) HandleGet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	products := make([]Product, len(res))
+	products := make([]product, len(res))
 	for i, p := range res {
-		products[i] = Product{
+		products[i] = product{
 			Code:  p.Code,
 			Price: p.Price.InexactFloat64(),
 			Category: categoryResponse{

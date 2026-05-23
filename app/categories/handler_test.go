@@ -67,6 +67,7 @@ func TestHandlePost(t *testing.T) {
 		rec := httptest.NewRecorder()
 		handler.HandlePost(rec, req)
 		assert.Equal(t, http.StatusCreated, rec.Code)
+		assert.Equal(t, "application/json", rec.Header().Get("Content-Type"))
 		assert.JSONEq(t, `{"code":"bags","name":"Bags"}`, rec.Body.String())
 	})
 
