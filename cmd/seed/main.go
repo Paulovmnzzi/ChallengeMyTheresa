@@ -19,13 +19,13 @@ func main() {
 	}
 
 	// Initialize database connection
-	db, close := database.New(
+	db, closeDB := database.New(
 		os.Getenv("POSTGRES_USER"),
 		os.Getenv("POSTGRES_PASSWORD"),
 		os.Getenv("POSTGRES_DB"),
 		os.Getenv("POSTGRES_PORT"),
 	)
-	defer close()
+	defer closeDB()
 
 	dir := os.Getenv("POSTGRES_SQL_DIR")
 	files, err := os.ReadDir(dir)
@@ -50,6 +50,7 @@ func main() {
 		content, err := os.ReadFile(path)
 		if err != nil {
 			log.Printf("reading file %s failed: %v", file.Name(), err)
+			return
 		}
 
 		sql := string(content)
