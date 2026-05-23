@@ -73,9 +73,9 @@ type variantResponse struct {
 }
 
 type productDetailResponse struct {
-	Code     string           `json:"code"`
-	Price    float64          `json:"price"`
-	Category categoryResponse `json:"category"`
+	Code     string            `json:"code"`
+	Price    float64           `json:"price"`
+	Category categoryResponse  `json:"category"`
 	Variants []variantResponse `json:"variants"`
 }
 
