@@ -61,12 +61,14 @@ func (h *CategoriesHandler) HandlePost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if strings.TrimSpace(req.Code) == "" || strings.TrimSpace(req.Name) == "" {
+	code := strings.TrimSpace(req.Code)
+	name := strings.TrimSpace(req.Name)
+	if code == "" || name == "" {
 		api.ErrorResponse(w, http.StatusBadRequest, "code and name are required")
 		return
 	}
 
-	cat := &models.Category{Code: req.Code, Name: req.Name}
+	cat := &models.Category{Code: code, Name: name}
 	if err := h.repo.CreateCategory(cat); err != nil {
 		if errors.Is(err, models.ErrDuplicateCode) {
 			api.ErrorResponse(w, http.StatusConflict, "category code already exists")

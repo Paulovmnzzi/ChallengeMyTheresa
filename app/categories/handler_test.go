@@ -11,9 +11,10 @@ import (
 )
 
 type mockCategoryRepository struct {
-	categories []models.Category
-	createErr  error
-	getErr     error
+	categories      []models.Category
+	createErr       error
+	getErr          error
+	createdCategory *models.Category
 }
 
 func (m *mockCategoryRepository) GetAllCategories() ([]models.Category, error) {
@@ -21,6 +22,7 @@ func (m *mockCategoryRepository) GetAllCategories() ([]models.Category, error) {
 }
 
 func (m *mockCategoryRepository) CreateCategory(c *models.Category) error {
+	m.createdCategory = c
 	return m.createErr
 }
 
@@ -102,6 +104,19 @@ func TestHandlePost(t *testing.T) {
 		handler.HandlePost(rec, req)
 		assert.Equal(t, http.StatusConflict, rec.Code)
 		assert.JSONEq(t, `{"error":"category code already exists"}`, rec.Body.String())
+	})
+
+	t.Run("trims whitespace from code and name before saving", func(t *testing.T) {
+		mock := &mockCategoryRepository{}
+		handler := NewCategoriesHandler(mock)
+		body := bytes.NewBufferString(`{"code":"  bags  ","name":"  Bags  "}`)
+		req := httptest.NewRequest(http.MethodPost, "/categories", body)
+		req.Header.Set("Content-Type", "application/json")
+		rec := httptest.NewRecorder()
+		handler.HandlePost(rec, req)
+		assert.Equal(t, http.StatusCreated, rec.Code)
+		assert.Equal(t, "bags", mock.createdCategory.Code)
+		assert.Equal(t, "Bags", mock.createdCategory.Name)
 	})
 
 	t.Run("returns 415 when Content-Type is not application/json", func(t *testing.T) {
